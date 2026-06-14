@@ -99,14 +99,14 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
-        "core_stock_apis": "yfinance",       # Options: alpha_vantage, yfinance
-        "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance
-        "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance
+        "core_stock_apis": "akshare",        # Options: alpha_vantage, yfinance, fmp, akshare
+        "technical_indicators": "akshare",   # Options: alpha_vantage, yfinance, fmp, akshare
+        "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance, fmp
         "news_data": "yfinance",             # Options: alpha_vantage, yfinance
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {
-        # Example: "get_stock_data": "alpha_vantage",  # Override category default
+        "get_stock_data": "akshare,yfinance",  # akshare first, fallback to yfinance
     },
     # Benchmark for alpha calculation in the reflection layer.
     # ``benchmark_ticker`` (when set) overrides the suffix map for all

@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>TradingAgents - Multi-Agent Trading Analysis</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-card: #ffffff;
+            --accent: #059669;
+            --accent-glow: rgba(5,150,105,0.15);
+            --accent-purple: #7c3aed;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --buy-color: #059669;
+            --sell-color: #dc2626;
+            --hold-color: #d97706;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .content { position: relative; }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--accent);
+        }
+        .navbar-brand i { margin-right: 8px; -webkit-text-fill-color: initial; color: var(--accent); }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+        }
+        .card-header i { color: var(--accent); margin-right: 8px; }
+
+        /* Form */
+        .form-control, .form-select {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            color: var(--text-primary);
+        }
+        .form-control::placeholder { color: var(--text-secondary); }
+        .form-label { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
+
+        /* Buttons */
+        .btn-primary {
+            background: var(--accent);
+            border: none;
+            border-radius: 10px;
+            padding: 0.7rem 1.5rem;
+            font-weight: 600;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--accent-glow);
+            color: #ffffff;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            transform: none;
+        }
+        .btn-outline-accent {
+            background: transparent;
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 0.5rem 1.2rem;
+            color: var(--accent);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-accent:hover {
+            background: var(--accent);
+            color: #ffffff;
+        }
+
+        /* Status badges */
+        .badge-buy {
+            background: rgba(5,150,105,0.1);
+            color: var(--buy-color);
+            border: 1px solid rgba(5,150,105,0.25);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .badge-sell {
+            background: rgba(239,68,68,0.15);
+            color: var(--sell-color);
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .badge-hold {
+            background: rgba(245,158,11,0.15);
+            color: var(--hold-color);
+            border: 1px solid rgba(245,158,11,0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        /* Progress log */
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 0.8rem;
+        }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-track { background: transparent; }
+        .log-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+        .log-entry { padding: 2px 0; color: var(--text-secondary); }
+        .log-entry::before { content: '> '; color: var(--accent); }
+        .log-entry.error { color: var(--sell-color); }
+        .log-entry.done { color: var(--accent); }
+
+        /* Report sections */
+        .report-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            border-left: 3px solid var(--accent);
+        }
+        .report-section h6 { color: var(--accent); font-weight: 600; }
+        .report-section .content {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Loading spinner */
+        .spinner-accent {
+            width: 20px; height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Decision banner */
+        .decision-banner {
+            background: linear-gradient(135deg, rgba(5,150,105,0.08), rgba(124,58,237,0.06));
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .decision-banner .decision-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .decision-banner .decision-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+
+        /* Ticker badge */
+        .ticker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(5,150,105,0.08);
+            border: 1px solid rgba(5,150,105,0.2);
+            border-radius: 20px;
+            padding: 0.3rem 1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .decision-banner .decision-value { font-size: 1.8rem; }
+        }
+
+        /* Markdown rendering */
+        .content h1, .content h2, .content h3, .content h4 {
+            color: var(--text-primary);
+            margin-top: 1rem;
+        }
+        .content strong { color: var(--text-primary); }
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+        }
+        .content td, .content th {
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+        }
+        .content th { background: rgba(5,150,105,0.08); color: var(--accent); }
+    
+        /* History page */
+        .history-item {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .history-item .ticker-tag {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+        .history-item .date-tag {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        .history-item .decision-tag {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .history-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+        .history-empty i {
+            font-size: 3rem;
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-weight: 500;
+            border-radius: 8px 8px 0 0;
+        }
+        .nav-tabs .nav-link:hover {
+            color: var(--text-primary);
+            background: rgba(0,0,0,0.02);
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--accent);
+            background: transparent;
+            border-bottom: 2px solid var(--accent);
+        }
+        .tab-content { padding-top: 1rem; }
+
+    
+        /* Workspace / Account Analysis */
+        .ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+        .ws-stat-card {
+            background: #f9fafb; border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 0.8rem 1rem; text-align: center;
+        }
+        .ws-stat-card .label { font-size: 0.75rem; color: var(--text-secondary); }
+        .ws-stat-card .value { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
+        .ws-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .ws-table th { background: #f3f4f6; padding: 0.5rem 0.6rem; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+        .ws-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border-color); }
+        .ws-table input, .ws-table select {
+            background: #fff; border: 1px solid var(--border-color); border-radius: 6px;
+            padding: 0.3rem 0.5rem; font-size: 0.8rem; width: 100%;
+        }
+        .ws-table input:focus { border-color: var(--accent); outline: none; }
+        .ws-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .ws-empty { text-align: center; padding: 2rem; color: var(--text-secondary); }
+        .analysis-result-card {
+            background: #f9fafb; border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 1rem; margin-bottom: 0.75rem;
+        }
+        .analysis-result-card .title { font-weight: 600; color: var(--accent); margin-bottom: 0.3rem; }
+        .analysis-result-card .body { font-size: 0.85rem; color: var(--text-secondary); white-space: pre-wrap; }
+        .health-score {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px; border-radius: 50%;
+            font-size: 1.3rem; font-weight: 700;
+        }
+        .health-score.good { background: rgba(5,150,105,0.12); color: #059669; }
+        .health-score.mid { background: rgba(217,119,6,0.12); color: #d97706; }
+        .health-score.bad { background: rgba(220,38,38,0.12); color: #dc2626; }
+
+    </style>
+</head>
+<body>
+
+
+<div class="content">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top px-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot"></i> TradingAgents
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <ul class="nav nav-tabs mb-0" id="mainTabs" role="tablist" style="border-bottom: none;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="analyze-tab" data-bs-toggle="tab" data-bs-target="#analyzePage" type="button" role="tab">
+                            <i class="fas fa-chart-line"></i> Analyze
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#historyPage" type="button" role="tab" onclick="refreshHistory()">
+                            <i class="fas fa-history"></i> History
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="portfolio-tab" data-bs-toggle="tab" data-bs-target="#portfolioPage" type="button" role="tab">
+                            <i class="fas fa-briefcase"></i> Portfolio
+                        </button>
+                    </li>
+                </ul>
+                <span class="ticker-badge" id="statusBadge">
+                    <span class="spinner-accent" id="statusSpinner" style="display:none;"></span>
+                    <span id="statusText"><i class="fas fa-circle" style="color: var(--accent); font-size: 0.5rem;"></i> Ready</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4"><div class="tab-content" id="mainTabContent"><div class="tab-pane fade show active" id="analyzePage" role="tabpanel">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="fw-bold mb-1"><i class="fas fa-chart-line" style="color: var(--accent);"></i> Multi-Agent Trading Analysis</h2>
+                <p class="text-secondary">AI-powered stock analysis powered by 9 specialized agents</p>
+            </div>
+        </div>
+
+        <!-- Input Row -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card p-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label"><i class="fas fa-search"></i> Ticker</label>
+                            <input type="text" class="form-control" id="tickerInput" placeholder="e.g. NVDA, AAPL, TSLA" value="NVDA">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><i class="far fa-calendar"></i> Analysis Date</label>
+                            <input type="date" class="form-control" id="dateInput" value="2024-05-10">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label"><i class="fas fa-microchip"></i> LLM Provider</label>
+                            <select class="form-select" id="providerSelect">
+                                <option value="deepseek" selected>DeepSeek</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="google">Google Gemini</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="analyzeBtn" onclick="startAnalysis()">
+                                <i class="fas fa-play"></i> Analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress & Results -->
+        <div class="row">
+            <!-- Progress Log -->
+            <div class="col-md-5 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="fas fa-terminal"></i> Progress Log
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container" id="logContainer">
+                            <div class="log-entry">Ready to analyze. Enter a ticker and click Analyze.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decision / Summary -->
+            <div class="col-md-7 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="fas fa-gavel"></i> Trading Decision
+                    </div>
+                    <div class="card-body" id="decisionPanel">
+                        <div class="text-center py-5 text-secondary">
+                            <i class="fas fa-chart-bar fa-3x mb-3" style="opacity:0.3;"></i>
+                            <p>Run an analysis to see the trading decision</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Reports -->
+        <div class="row" id="reportsSection" style="display:none;">
+            <div class="col-12 mb-3">
+                <h4 class="fw-bold"><i class="fas fa-file-alt" style="color: var(--accent);"></i> Detailed Agent Reports</h4>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-chart-bar"></i> Market Analyst</div>
+                    <div class="card-body"><div class="content" id="marketReport"></div></div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-newspaper"></i> News Analyst</div>
+                    <div class="card-body"><div class="content" id="newsReport"></div></div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-smile"></i> Sentiment Analyst</div>
+                    <div class="card-body"><div class="content" id="sentimentReport"></div></div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-building"></i> Fundamentals Analyst</div>
+                    <div class="card-body"><div class="content" id="fundamentalsReport"></div></div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-comments"></i> Bull vs Bear Debate</div>
+                    <div class="card-body">
+                        <div class="report-section">
+                            <h6><i class="fas fa-arrow-up" style="color: var(--buy-color);"></i> Bull Case</h6>
+                            <div class="content" id="bullHistory"></div>
+                        </div>
+                        <div class="report-section">
+                            <h6><i class="fas fa-arrow-down" style="color: var(--sell-color);"></i> Bear Case</h6>
+                            <div class="content" id="bearHistory"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-shield-alt"></i> Risk Management Debate</div>
+                    <div class="card-body">
+                        <div class="report-section">
+                            <h6><i class="fas fa-fire" style="color: #f59e0b;"></i> Aggressive</h6>
+                            <div class="content" id="aggressiveHistory"></div>
+                        </div>
+                        <div class="report-section">
+                            <h6><i class="fas fa-snowflake" style="color: #3b82f6;"></i> Conservative</h6>
+                            <div class="content" id="conservativeHistory"></div>
+                        </div>
+                        <div class="report-section">
+                            <h6><i class="fas fa-balance-scale" style="color: #a78bfa;"></i> Neutral</h6>
+                            <div class="content" id="neutralHistory"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-clipboard-list"></i> Investment Plan</div>
+                    <div class="card-body"><div class="content" id="investmentPlan"></div></div>
+                </div>
+            </div>
+
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-exchange-alt"></i> Trader Plan</div>
+                    <div class="card-body"><div class="content" id="traderPlan"></div></div>
+                </div>
+            </div>
+
+            <div class="col-12 mb-4">
+                <div class="card" style="border-color: var(--accent);">
+                    <div class="card-header" style="color: var(--accent);"><i class="fas fa-gavel"></i> Final Portfolio Decision</div>
+                    <div class="card-body"><div class="content" id="finalDecision"></div></div>
+                </div>
+            </div>
+        </div>
+    
+        <!-- History Page -->
+        <div class="row" id="historySection" style="display:none;">
+            <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
+                <h4 class="fw-bold mb-0"><i class="fas fa-history" style="color: var(--accent);"></i> Analysis History</h4>
+                <div>
+                    <button class="btn btn-outline-accent btn-sm me-2" onclick="refreshHistory()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <button class="btn btn-outline-accent btn-sm" onclick="clearHistory()" style="border-color: var(--sell-color); color: var(--sell-color);"><i class="fas fa-trash-alt"></i> Clear All</button>
+                </div>
+            </div>
+            <div class="col-12">
+                <div id="historyList"></div>
+            </div>
+        </div>
+
+        <!-- History Detail Modal -->
+        <div class="modal fade" id="historyModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 16px;">
+                    <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                        <h5 class="modal-title fw-bold" id="historyModalTitle"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="historyModalBody"></div>
+                </div>
+            </div>
+        </div>
+
+</div><!-- /analyzePage --><div class="tab-pane fade" id="historyPage" role="tabpanel">
+        </div><!-- /historyPage -->
+        <div class="tab-pane fade" id="portfolioPage" role="tabpanel">
+            <div class="row mb-3">
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <h4 class="fw-bold mb-0"><i class="fas fa-briefcase" style="color: var(--accent);"></i> Portfolio Account</h4>
+                    <div class="ws-actions">
+                        <button class="btn btn-outline-accent btn-sm" onclick="loadWorkspace()"><i class="fas fa-sync-alt"></i> Load</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveWorkspace()"><i class="fas fa-save"></i> Save</button>
+                        <button class="btn btn-primary btn-sm" onclick="runAccountAnalysis()" style="background: var(--accent-purple);"><i class="fas fa-chart-pie"></i> Analyze</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account State -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="fas fa-wallet"></i> Account State</div>
+                <div class="card-body">
+                    <div class="ws-grid">
+                        <div class="ws-stat-card">
+                            <div class="label">NAV</div>
+                            <input type="number" class="form-control form-control-sm text-center fw-bold" id="wsNav" step="0.01" value="100000" style="font-size:1.1rem;">
+                        </div>
+                        <div class="ws-stat-card">
+                            <div class="label">Cash</div>
+                            <input type="number" class="form-control form-control-sm text-center" id="wsCash" step="0.01" value="30000">
+                        </div>
+                        <div class="ws-stat-card">
+                            <div class="label">Drawdown %</div>
+                            <input type="number" class="form-control form-control-sm text-center" id="wsDrawdown" step="0.1" value="0">
+                        </div>
+                        <div class="ws-stat-card">
+                            <div class="label">Cash %</div>
+                            <div class="value" id="wsCashPct">--</div>
+                        </div>
+                        <div class="ws-stat-card">
+                            <div class="label">Exposure</div>
+                            <div class="value" id="wsExposure">--</div>
+                        </div>
+                        <div class="ws-stat-card">
+                            <div class="label">Positions</div>
+                            <div class="value" id="wsPositionCount">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Positions -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-chart-bar"></i> Positions</span>
+                    <button class="btn btn-outline-accent btn-sm" onclick="addPositionRow()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div class="card-body p-0">
+                    <div style="overflow-x:auto;">
+                        <table class="ws-table" id="positionsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:90px;">Ticker</th>
+                                    <th style="width:70px;">Type</th>
+                                    <th style="width:90px;">Cost Basis</th>
+                                    <th style="width:80px;">Shares</th>
+                                    <th style="width:90px;">Price</th>
+                                    <th style="width:90px;">Mkt Value</th>
+                                    <th style="width:70px;">Weight</th>
+                                    <th style="width:80px;">PnL %</th>
+                                    <th style="width:50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div class="card mb-3" id="analysisResultsCard" style="display:none;">
+                <div class="card-header"><i class="fas fa-chart-pie"></i> Analysis Results</div>
+                <div class="card-body" id="analysisResultsBody"></div>
+            </div>
+
+            <!-- History -->
+            <div class="card">
+                <div class="card-header"><i class="fas fa-history"></i> Analysis History</div>
+                <div class="card-body" id="accountHistoryBody">
+                    <div class="ws-empty">No analysis history yet.</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /tab-content -->
+</div><!-- /container -->
+
+<script>
+let pollInterval = null;
+
+function addLog(msg, type='') {
+    const container = document.getElementById('logContainer');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry' + (type ? ' ' + type : '');
+    entry.textContent = msg;
+    container.appendChild(entry);
+    container.scrollTop = container.scrollHeight;
+}
+
+function setStatus(text, spinning=false) {
+    document.getElementById('statusText').innerHTML = text;
+    document.getElementById('statusSpinner').style.display = spinning ? 'inline-block' : 'none';
+}
+
+function getDecisionBadge(decision) {
+    const d = (decision || '').toLowerCase();
+    if (d.includes('buy') || d.includes('overweight')) return '<span class="badge-buy">' + decision + '</span>';
+    if (d.includes('sell') || d.includes('underweight')) return '<span class="badge-sell">' + decision + '</span>';
+    return '<span class="badge-hold">' + decision + '</span>';
+}
+
+function renderMarkdown(text) {
+    if (!text) return '<span class="text-secondary">No data</span>';
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    return html;
+}
+
+function showResult(data) {
+    const decision = data.decision || 'N/A';
+    const panel = document.getElementById('decisionPanel');
+    panel.innerHTML = `
+        <div class="decision-banner">
+            <div class="decision-label"><i class="fas fa-chart-line"></i> ${data.ticker} · ${data.date}</div>
+            <div class="decision-value">${getDecisionBadge(decision)}</div>
+            <div class="text-secondary" style="font-size:0.85rem;">Portfolio Manager Rating</div>
+        </div>
+    `;
+
+    // Show reports
+    document.getElementById('reportsSection').style.display = 'flex';
+
+    const fields = {
+        marketReport: 'market_report',
+        newsReport: 'news_report',
+        sentimentReport: 'sentiment_report',
+        fundamentalsReport: 'fundamentals_report',
+        bullHistory: 'bull_history',
+        bearHistory: 'bear_history',
+        aggressiveHistory: 'aggressive_history',
+        conservativeHistory: 'conservative_history',
+        neutralHistory: 'neutral_history',
+        investmentPlan: 'investment_plan',
+        traderPlan: 'trader_investment_plan',
+        finalDecision: 'final_trade_decision',
+    };
+
+    for (const [elId, key] of Object.entries(fields)) {
+        const el = document.getElementById(elId);
+        if (el) el.innerHTML = renderMarkdown(data[key]);
+    }
+}
+
+async function startAnalysis() {
+    const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    const date = document.getElementById('dateInput').value;
+    const provider = document.getElementById('providerSelect').value;
+
+    if (!ticker) { alert('Please enter a ticker'); return; }
+
+    // Reset UI
+    document.getElementById('reportsSection').style.display = 'none';
+    document.getElementById('logContainer').innerHTML = '';
+    document.getElementById('decisionPanel').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-accent" style="width:40px;height:40px;border-width:3px;margin:0 auto 1rem;"></div>
+            <p class="text-secondary">Analysis in progress...</p>
+        </div>
+    `;
+
+    document.getElementById('analyzeBtn').disabled = true;
+    setStatus('<i class="fas fa-spinner fa-spin"></i> Analyzing...', true);
+
+    addLog('🚀 Starting analysis for ' + ticker + ' on ' + date);
+    addLog('⚙️ Provider: ' + provider);
+
+    try {
+        const resp = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ticker, date})
+        });
+        const data = await resp.json();
+        if (data.error) {
+            addLog('❌ ' + data.error, 'error');
+            setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+            document.getElementById('analyzeBtn').disabled = false;
+            return;
+        }
+        addLog('✅ Analysis started, polling for results...');
+
+        // Poll for progress
+        pollInterval = setInterval(async () => {
+            try {
+                const progResp = await fetch('/api/analysis-progress');
+                const prog = await progResp.json();
+
+                // Update logs
+                if (prog.progress) {
+                    document.getElementById('logContainer').innerHTML = '';
+                    prog.progress.forEach(p => {
+                        const type = p.includes('❌') ? 'error' : p.includes('✅') ? 'done' : '';
+                        addLog(p, type);
+                    });
+                }
+
+                if (prog.error) {
+                    clearInterval(pollInterval);
+                    setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+                    document.getElementById('analyzeBtn').disabled = false;
+                    addLog('❌ ' + prog.error, 'error');
+                    document.getElementById('decisionPanel').innerHTML = `
+                        <div class="text-center py-5 text-danger">
+                            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                            <p>Analysis failed: ${prog.error}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (prog.done) {
+                    clearInterval(pollInterval);
+                    // Fetch result
+                    const resultResp = await fetch('/api/analysis-result');
+                    const result = await resultResp.json();
+                    if (result.error) {
+                        addLog('❌ ' + result.error, 'error');
+                        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+                    } else {
+                        showResult(result);
+                        setStatus('<i class="fas fa-check-circle" style="color:var(--accent);"></i> Complete');
+                        addLog('✅ Analysis complete! Decision: ' + (result.decision || 'N/A'), 'done');
+                    }
+                    document.getElementById('analyzeBtn').disabled = false;
+                }
+            } catch(e) {
+                console.error('Poll error:', e);
+            }
+        }, 1000);
+
+    } catch(e) {
+        addLog('❌ Network error: ' + e.message, 'error');
+        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+        document.getElementById('analyzeBtn').disabled = false;
+    }
+}
+
+// Load initial status
+fetch('/api/status').then(r => r.json()).then(s => {
+    const provider = s.llm_provider || 'deepseek';
+    document.getElementById('providerSelect').value = provider;
+    if (!s.has_deepseek && !s.has_openai) {
+        addLog('⚠️ No API keys detected. Check your .env file.', 'error');
+    } else if (s.has_deepseek) {
+        addLog('🔑 DeepSeek key detected: ' + s.masked_deepseek);
+    }
+});
+
+
+// ---------------------------------------------------------------------------
+// Workspace / Portfolio Account
+// ---------------------------------------------------------------------------
+let currentWorkspace = null;
+
+function getPositionsFromTable() {
+    const rows = document.querySelectorAll('#positionsBody tr');
+    const positions = [];
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input, select');
+        if (inputs.length < 5) return;
+        const ticker = inputs[0].value.trim().toUpperCase();
+        if (!ticker) return;
+        positions.push({
+            ticker: ticker,
+            book_type: inputs[1].value,
+            cost_basis: parseFloat(inputs[2].value) || 0,
+            shares: parseFloat(inputs[3].value) || 0,
+            latest_price: parseFloat(inputs[4].value) || 0,
+        });
+    });
+    return positions;
+}
+
+function renderPositionsTable(positions) {
+    const tbody = document.getElementById('positionsBody');
+    tbody.innerHTML = '';
+    if (!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-secondary py-3">No positions. Click "Add" to add one.</td></tr>';
+        return;
+    }
+    positions.forEach((p, i) => {
+        const mv = (p.latest_price || 0) * (p.shares || 0);
+        const costTotal = (p.cost_basis || 0) * (p.shares || 0);
+        const upnlPct = costTotal ? ((mv - costTotal) / costTotal * 100) : 0;
+        const nav = parseFloat(document.getElementById('wsNav').value) || 1;
+        const weight = nav ? (mv / nav * 100) : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" value="${p.ticker}" onchange="recalcWorkspace()" placeholder="AAPL"></td>
+            <td><select onchange="recalcWorkspace()">
+                <option value="core" ${p.book_type === 'core' ? 'selected' : ''}>Core</option>
+                <option value="tactical" ${p.book_type === 'tactical' ? 'selected' : ''}>Tactical</option>
+            </select></td>
+            <td><input type="number" step="0.01" value="${p.cost_basis || 0}" onchange="recalcWorkspace()"></td>
+            <td><input type="number" step="1" value="${p.shares || 0}" onchange="recalcWorkspace()"></td>
+            <td><input type="number" step="0.01" value="${p.latest_price || 0}" onchange="recalcWorkspace()"></td>
+            <td class="text-end fw-bold">${mv.toFixed(2)}</td>
+            <td class="text-end">${weight.toFixed(1)}%</td>
+            <td class="text-end ${upnlPct < -5 ? 'text-danger' : upnlPct > 5 ? 'text-success' : ''}">${upnlPct.toFixed(1)}%</td>
+            <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); recalcWorkspace();"><i class="fas fa-times"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function addPositionRow() {
+    const tbody = document.getElementById('positionsBody');
+    const empty = tbody.querySelector('.text-center.py-3');
+    if (empty) tbody.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" placeholder="AAPL" onchange="recalcWorkspace()"></td>
+        <td><select onchange="recalcWorkspace()"><option value="core">Core</option><option value="tactical">Tactical</option></select></td>
+        <td><input type="number" step="0.01" value="0" onchange="recalcWorkspace()"></td>
+        <td><input type="number" step="1" value="0" onchange="recalcWorkspace()"></td>
+        <td><input type="number" step="0.01" value="0" onchange="recalcWorkspace()"></td>
+        <td class="text-end">0.00</td>
+        <td class="text-end">0.0%</td>
+        <td class="text-end">0.0%</td>
+        <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); recalcWorkspace();"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function recalcWorkspace() {
+    const nav = parseFloat(document.getElementById('wsNav').value) || 0;
+    const cash = parseFloat(document.getElementById('wsCash').value) || 0;
+    const positions = getPositionsFromTable();
+    
+    let totalMv = 0;
+    positions.forEach(p => {
+        const mv = (p.latest_price || 0) * (p.shares || 0);
+        totalMv += mv;
+    });
+    
+    document.getElementById('wsCashPct').textContent = nav ? (cash / nav * 100).toFixed(1) + '%' : '--';
+    document.getElementById('wsExposure').textContent = nav ? (totalMv / nav * 100).toFixed(1) + '%' : '--';
+    document.getElementById('wsPositionCount').textContent = positions.length;
+    
+    // Re-render to update computed columns
+    renderPositionsTable(positions);
+}
+
+async function loadWorkspace() {
+    try {
+        const resp = await fetch('/api/workspace');
+        const data = await resp.json();
+        if (!data.success) { alert(data.error); return; }
+        
+        const ws = data.workspace || {};
+        const acct = ws.account_state || {};
+        
+        document.getElementById('wsNav').value = acct.nav || 100000;
+        document.getElementById('wsCash').value = acct.cash || 0;
+        document.getElementById('wsDrawdown').value = acct.current_drawdown || 0;
+        
+        currentWorkspace = ws;
+        renderPositionsTable(ws.positions || []);
+        recalcWorkspace();
+        loadAccountHistory();
+    } catch(e) {
+        console.error('Load workspace error:', e);
+    }
+}
+
+async function saveWorkspace() {
+    const nav = parseFloat(document.getElementById('wsNav').value) || 0;
+    const cash = parseFloat(document.getElementById('wsCash').value) || 0;
+    const drawdown = parseFloat(document.getElementById('wsDrawdown').value) || 0;
+    const positions = getPositionsFromTable();
+    
+    const payload = {
+        account_state: { nav, cash, current_drawdown: drawdown },
+        positions: positions,
+    };
+    
+    try {
+        const resp = await fetch('/api/workspace', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentWorkspace = data.workspace;
+            addLog('💾 Workspace saved');
+            loadAccountHistory();
+        } else {
+            alert('Save failed: ' + data.error);
+        }
+    } catch(e) {
+        alert('Save error: ' + e.message);
+    }
+}
+
+async function runAccountAnalysis() {
+    // Save first
+    await saveWorkspace();
+    if (!currentWorkspace) { alert('Please save workspace first'); return; }
+    
+    const card = document.getElementById('analysisResultsCard');
+    const body = document.getElementById('analysisResultsBody');
+    card.style.display = 'block';
+    body.innerHTML = '<div class="text-center py-3"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">Analyzing portfolio...</p></div>';
+    
+    try {
+        const resp = await fetch('/api/account-analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({workspace_name: 'default'}),
+        });
+        const data = await resp.json();
+        
+        if (!data.success) {
+            body.innerHTML = '<div class="text-danger">Analysis failed: ' + data.error + '</div>';
+            return;
+        }
+        
+        const analysis = data.analysis || {};
+        const score = analysis.portfolio_health_score || 0;
+        const scoreClass = score >= 70 ? 'good' : score >= 40 ? 'mid' : 'bad';
+        
+        let html = '<div class="d-flex align-items-center gap-3 mb-3">';
+        html += '<div class="health-score ' + scoreClass + '">' + score + '</div>';
+        html += '<div><strong>Portfolio Health Score</strong><br><span class="text-secondary">' + analysis.summary + '</span></div>';
+        html += '</div>';
+        
+        // Manager actions
+        const actions = analysis.manager_actions || [];
+        if (actions.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Manager Actions</div>';
+            actions.forEach(a => {
+                html += '<div class="body">• ' + (a.action || '') + ': ' + (a.reason || '') + '</div>';
+            });
+            html += '</div>';
+        }
+        
+        // Holding health
+        const health = analysis.holding_health || [];
+        if (health.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Holding Health</div>';
+            health.forEach(h => {
+                const cls = h.status === '健康' ? 'text-success' : 'text-danger';
+                html += '<div class="body"><span class="' + cls + '">' + h.ticker + '</span>: ' + h.status + ' (PnL: ' + h.unrealized_pnl_pct + '%, Weight: ' + h.weight + '%)</div>';
+            });
+            html += '</div>';
+        }
+        
+        // Risks
+        const risks = analysis.concentration_risks || [];
+        if (risks.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Concentration Risks</div>';
+            risks.forEach(r => {
+                html += '<div class="body text-danger">• ' + (r.risk || '') + '</div>';
+            });
+            html += '</div>';
+        }
+        
+        body.innerHTML = html;
+        addLog('✅ Account analysis complete - Health score: ' + score);
+        loadAccountHistory();
+    } catch(e) {
+        body.innerHTML = '<div class="text-danger">Error: ' + e.message + '</div>';
+    }
+}
+
+async function loadAccountHistory() {
+    try {
+        const resp = await fetch('/api/account-analysis/history');
+        const data = await resp.json();
+        const body = document.getElementById('accountHistoryBody');
+        
+        if (!data.success || !data.history || data.history.length === 0) {
+            body.innerHTML = '<div class="ws-empty">No analysis history yet.</div>';
+            return;
+        }
+        
+        let html = '';
+        data.history.forEach(h => {
+            const time = h.created_at || '';
+            html += '<div class="analysis-result-card" style="cursor:pointer;" onclick="viewAccountHistory(this)">';
+            html += '<div class="d-flex justify-content-between">';
+            html += '<div class="title">' + (h.workspace_name || 'default') + '</div>';
+            html += '<small class="text-secondary">' + time + '</small>';
+            html += '</div>';
+            html += '<div class="body">' + (h.summary || '') + '</div>';
+            html += '</div>';
+        });
+        body.innerHTML = html;
+    } catch(e) {
+        console.error('Load account history error:', e);
+    }
+}
+
+function viewAccountHistory(el) {
+    // Simple expand/collapse for now
+}
+
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
+async function refreshHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '<div class="text-center py-4"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">Loading history...</p></div>';
+    
+    try {
+        const resp = await fetch('/api/history');
+        const data = await resp.json();
+        
+        if (!data.records || data.records.length === 0) {
+            list.innerHTML = '<div class="history-empty"><i class="fas fa-inbox"></i><p>No analysis history yet.<br>Run an analysis and it will be saved here automatically.</p></div>';
+            return;
+        }
+        
+        let html = `<p class="text-secondary mb-3">Total: ${data.total} records</p>`;
+        
+        for (const r of data.records) {
+            const badge = getDecisionBadge(r.decision || 'N/A');
+            const time = r.created_at || '';
+            html += `
+                <div class="history-item mb-2" onclick="viewHistory('${r.id}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="ticker-tag">${r.ticker}</span>
+                            <span class="date-tag ms-2"><i class="far fa-calendar-alt"></i> ${r.date}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            ${badge}
+                            <span class="date-tag"><i class="far fa-clock"></i> ${time}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        list.innerHTML = html;
+    } catch(e) {
+        list.innerHTML = '<div class="history-empty text-danger"><i class="fas fa-exclamation-triangle"></i><p>Failed to load history: ' + e.message + '</p></div>';
+    }
+}
+
+async function viewHistory(id) {
+    try {
+        const resp = await fetch('/api/history/' + id);
+        const data = await resp.json();
+        if (data.error) { alert(data.error); return; }
+        
+        document.getElementById('historyModalTitle').innerHTML = 
+            '<span style="color:var(--accent);">' + data.ticker + '</span> · ' + data.date + 
+            ' ' + getDecisionBadge(data.decision || 'N/A');
+        
+        const reports = data.data || {};
+        let body = '';
+        
+        // Decision summary
+        body += '<div class="decision-banner mb-4">';
+        body += '<div class="decision-label">Portfolio Decision</div>';
+        body += '<div class="decision-value">' + getDecisionBadge(data.decision || 'N/A') + '</div>';
+        body += '</div>';
+        
+        // Reports
+        const sections = [
+            {title: 'Market Report', key: 'market_report'},
+            {title: 'News Report', key: 'news_report'},
+            {title: 'Sentiment Report', key: 'sentiment_report'},
+            {title: 'Fundamentals Report', key: 'fundamentals_report'},
+            {title: 'Investment Plan', key: 'investment_plan'},
+            {title: 'Trader Plan', key: 'trader_investment_plan'},
+            {title: 'Final Decision', key: 'final_trade_decision'},
+        ];
+        
+        for (const s of sections) {
+            if (reports[s.key]) {
+                body += '<div class="report-section"><h6>' + s.title + '</h6>';
+                body += '<div class="content">' + renderMarkdown(reports[s.key]) + '</div></div>';
+            }
+        }
+        
+        document.getElementById('historyModalBody').innerHTML = body;
+        
+        const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+        modal.show();
+    } catch(e) {
+        alert('Failed to load detail: ' + e.message);
+    }
+}
+
+async function clearHistory() {
+    if (!confirm('Clear all analysis history? This cannot be undone.')) return;
+    try {
+        await fetch('/api/history', {method: 'DELETE'});
+        refreshHistory();
+    } catch(e) {
+        alert('Failed to clear: ' + e.message);
+    }
+}
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+
+// ---------------------------------------------------------------------------
+// Workspace / Portfolio Account
+// ---------------------------------------------------------------------------
+let currentWorkspace = null;
+
+function getPositionsFromTable() {
+    const rows = document.querySelectorAll('#positionsBody tr');
+    const positions = [];
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input, select');
+        if (inputs.length < 5) return;
+        const ticker = inputs[0].value.trim().toUpperCase();
+        if (!ticker) return;
+        positions.push({
+            ticker: ticker,
+            book_type: inputs[1].value,
+            cost_basis: parseFloat(inputs[2].value) || 0,
+            shares: parseFloat(inputs[3].value) || 0,
+            latest_price: parseFloat(inputs[4].value) || 0,
+        });
+    });
+    return positions;
+}
+
+function renderPositionsTable(positions) {
+    const tbody = document.getElementById('positionsBody');
+    tbody.innerHTML = '';
+    if (!positions || positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-secondary py-3">No positions. Click "Add" to add one.</td></tr>';
+        return;
+    }
+    positions.forEach((p, i) => {
+        const mv = (p.latest_price || 0) * (p.shares || 0);
+        const costTotal = (p.cost_basis || 0) * (p.shares || 0);
+        const upnlPct = costTotal ? ((mv - costTotal) / costTotal * 100) : 0;
+        const nav = parseFloat(document.getElementById('wsNav').value) || 1;
+        const weight = nav ? (mv / nav * 100) : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" value="${p.ticker}" onchange="recalcWorkspace()" placeholder="AAPL"></td>
+            <td><select onchange="recalcWorkspace()">
+                <option value="core" ${p.book_type === 'core' ? 'selected' : ''}>Core</option>
+                <option value="tactical" ${p.book_type === 'tactical' ? 'selected' : ''}>Tactical</option>
+            </select></td>
+            <td><input type="number" step="0.01" value="${p.cost_basis || 0}" onchange="recalcWorkspace()"></td>
+            <td><input type="number" step="1" value="${p.shares || 0}" onchange="recalcWorkspace()"></td>
+            <td><input type="number" step="0.01" value="${p.latest_price || 0}" onchange="recalcWorkspace()"></td>
+            <td class="text-end fw-bold">${mv.toFixed(2)}</td>
+            <td class="text-end">${weight.toFixed(1)}%</td>
+            <td class="text-end ${upnlPct < -5 ? 'text-danger' : upnlPct > 5 ? 'text-success' : ''}">${upnlPct.toFixed(1)}%</td>
+            <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); recalcWorkspace();"><i class="fas fa-times"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function addPositionRow() {
+    const tbody = document.getElementById('positionsBody');
+    const empty = tbody.querySelector('.text-center.py-3');
+    if (empty) tbody.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" placeholder="AAPL" onchange="recalcWorkspace()"></td>
+        <td><select onchange="recalcWorkspace()"><option value="core">Core</option><option value="tactical">Tactical</option></select></td>
+        <td><input type="number" step="0.01" value="0" onchange="recalcWorkspace()"></td>
+        <td><input type="number" step="1" value="0" onchange="recalcWorkspace()"></td>
+        <td><input type="number" step="0.01" value="0" onchange="recalcWorkspace()"></td>
+        <td class="text-end">0.00</td>
+        <td class="text-end">0.0%</td>
+        <td class="text-end">0.0%</td>
+        <td><button class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); recalcWorkspace();"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function recalcWorkspace() {
+    const nav = parseFloat(document.getElementById('wsNav').value) || 0;
+    const cash = parseFloat(document.getElementById('wsCash').value) || 0;
+    const positions = getPositionsFromTable();
+    
+    let totalMv = 0;
+    positions.forEach(p => {
+        const mv = (p.latest_price || 0) * (p.shares || 0);
+        totalMv += mv;
+    });
+    
+    document.getElementById('wsCashPct').textContent = nav ? (cash / nav * 100).toFixed(1) + '%' : '--';
+    document.getElementById('wsExposure').textContent = nav ? (totalMv / nav * 100).toFixed(1) + '%' : '--';
+    document.getElementById('wsPositionCount').textContent = positions.length;
+    
+    // Re-render to update computed columns
+    renderPositionsTable(positions);
+}
+
+async function loadWorkspace() {
+    try {
+        const resp = await fetch('/api/workspace');
+        const data = await resp.json();
+        if (!data.success) { alert(data.error); return; }
+        
+        const ws = data.workspace || {};
+        const acct = ws.account_state || {};
+        
+        document.getElementById('wsNav').value = acct.nav || 100000;
+        document.getElementById('wsCash').value = acct.cash || 0;
+        document.getElementById('wsDrawdown').value = acct.current_drawdown || 0;
+        
+        currentWorkspace = ws;
+        renderPositionsTable(ws.positions || []);
+        recalcWorkspace();
+        loadAccountHistory();
+    } catch(e) {
+        console.error('Load workspace error:', e);
+    }
+}
+
+async function saveWorkspace() {
+    const nav = parseFloat(document.getElementById('wsNav').value) || 0;
+    const cash = parseFloat(document.getElementById('wsCash').value) || 0;
+    const drawdown = parseFloat(document.getElementById('wsDrawdown').value) || 0;
+    const positions = getPositionsFromTable();
+    
+    const payload = {
+        account_state: { nav, cash, current_drawdown: drawdown },
+        positions: positions,
+    };
+    
+    try {
+        const resp = await fetch('/api/workspace', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentWorkspace = data.workspace;
+            addLog('💾 Workspace saved');
+            loadAccountHistory();
+        } else {
+            alert('Save failed: ' + data.error);
+        }
+    } catch(e) {
+        alert('Save error: ' + e.message);
+    }
+}
+
+async function runAccountAnalysis() {
+    // Save first
+    await saveWorkspace();
+    if (!currentWorkspace) { alert('Please save workspace first'); return; }
+    
+    const card = document.getElementById('analysisResultsCard');
+    const body = document.getElementById('analysisResultsBody');
+    card.style.display = 'block';
+    body.innerHTML = '<div class="text-center py-3"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">Analyzing portfolio...</p></div>';
+    
+    try {
+        const resp = await fetch('/api/account-analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({workspace_name: 'default'}),
+        });
+        const data = await resp.json();
+        
+        if (!data.success) {
+            body.innerHTML = '<div class="text-danger">Analysis failed: ' + data.error + '</div>';
+            return;
+        }
+        
+        const analysis = data.analysis || {};
+        const score = analysis.portfolio_health_score || 0;
+        const scoreClass = score >= 70 ? 'good' : score >= 40 ? 'mid' : 'bad';
+        
+        let html = '<div class="d-flex align-items-center gap-3 mb-3">';
+        html += '<div class="health-score ' + scoreClass + '">' + score + '</div>';
+        html += '<div><strong>Portfolio Health Score</strong><br><span class="text-secondary">' + analysis.summary + '</span></div>';
+        html += '</div>';
+        
+        // Manager actions
+        const actions = analysis.manager_actions || [];
+        if (actions.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Manager Actions</div>';
+            actions.forEach(a => {
+                html += '<div class="body">• ' + (a.action || '') + ': ' + (a.reason || '') + '</div>';
+            });
+            html += '</div>';
+        }
+        
+        // Holding health
+        const health = analysis.holding_health || [];
+        if (health.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Holding Health</div>';
+            health.forEach(h => {
+                const cls = h.status === '健康' ? 'text-success' : 'text-danger';
+                html += '<div class="body"><span class="' + cls + '">' + h.ticker + '</span>: ' + h.status + ' (PnL: ' + h.unrealized_pnl_pct + '%, Weight: ' + h.weight + '%)</div>';
+            });
+            html += '</div>';
+        }
+        
+        // Risks
+        const risks = analysis.concentration_risks || [];
+        if (risks.length > 0) {
+            html += '<div class="analysis-result-card"><div class="title">Concentration Risks</div>';
+            risks.forEach(r => {
+                html += '<div class="body text-danger">• ' + (r.risk || '') + '</div>';
+            });
+            html += '</div>';
+        }
+        
+        body.innerHTML = html;
+        addLog('✅ Account analysis complete - Health score: ' + score);
+        loadAccountHistory();
+    } catch(e) {
+        body.innerHTML = '<div class="text-danger">Error: ' + e.message + '</div>';
+    }
+}
+
+async function loadAccountHistory() {
+    try {
+        const resp = await fetch('/api/account-analysis/history');
+        const data = await resp.json();
+        const body = document.getElementById('accountHistoryBody');
+        
+        if (!data.success || !data.history || data.history.length === 0) {
+            body.innerHTML = '<div class="ws-empty">No analysis history yet.</div>';
+            return;
+        }
+        
+        let html = '';
+        data.history.forEach(h => {
+            const time = h.created_at || '';
+            html += '<div class="analysis-result-card" style="cursor:pointer;" onclick="viewAccountHistory(this)">';
+            html += '<div class="d-flex justify-content-between">';
+            html += '<div class="title">' + (h.workspace_name || 'default') + '</div>';
+            html += '<small class="text-secondary">' + time + '</small>';
+            html += '</div>';
+            html += '<div class="body">' + (h.summary || '') + '</div>';
+            html += '</div>';
+        });
+        body.innerHTML = html;
+    } catch(e) {
+        console.error('Load account history error:', e);
+    }
+}
+
+function viewAccountHistory(el) {
+    // Simple expand/collapse for now
+}
+
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
+async function refreshHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '<div class="text-center py-4"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">Loading history...</p></div>';
+    
+    try {
+        const resp = await fetch('/api/history');
+        const data = await resp.json();
+        
+        if (!data.records || data.records.length === 0) {
+            list.innerHTML = '<div class="history-empty"><i class="fas fa-inbox"></i><p>No analysis history yet.<br>Run an analysis and it will be saved here automatically.</p></div>';
+            return;
+        }
+        
+        let html = `<p class="text-secondary mb-3">Total: ${data.total} records</p>`;
+        
+        for (const r of data.records) {
+            const badge = getDecisionBadge(r.decision || 'N/A');
+            const time = r.created_at || '';
+            html += `
+                <div class="history-item mb-2" onclick="viewHistory('${r.id}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="ticker-tag">${r.ticker}</span>
+                            <span class="date-tag ms-2"><i class="far fa-calendar-alt"></i> ${r.date}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            ${badge}
+                            <span class="date-tag"><i class="far fa-clock"></i> ${time}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        list.innerHTML = html;
+    } catch(e) {
+        list.innerHTML = '<div class="history-empty text-danger"><i class="fas fa-exclamation-triangle"></i><p>Failed to load history: ' + e.message + '</p></div>';
+    }
+}
+
+async function viewHistory(id) {
+    try {
+        const resp = await fetch('/api/history/' + id);
+        const data = await resp.json();
+        if (data.error) { alert(data.error); return; }
+        
+        document.getElementById('historyModalTitle').innerHTML = 
+            '<span style="color:var(--accent);">' + data.ticker + '</span> · ' + data.date + 
+            ' ' + getDecisionBadge(data.decision || 'N/A');
+        
+        const reports = data.data || {};
+        let body = '';
+        
+        // Decision summary
+        body += '<div class="decision-banner mb-4">';
+        body += '<div class="decision-label">Portfolio Decision</div>';
+        body += '<div class="decision-value">' + getDecisionBadge(data.decision || 'N/A') + '</div>';
+        body += '</div>';
+        
+        // Reports
+        const sections = [
+            {title: 'Market Report', key: 'market_report'},
+            {title: 'News Report', key: 'news_report'},
+            {title: 'Sentiment Report', key: 'sentiment_report'},
+            {title: 'Fundamentals Report', key: 'fundamentals_report'},
+            {title: 'Investment Plan', key: 'investment_plan'},
+            {title: 'Trader Plan', key: 'trader_investment_plan'},
+            {title: 'Final Decision', key: 'final_trade_decision'},
+        ];
+        
+        for (const s of sections) {
+            if (reports[s.key]) {
+                body += '<div class="report-section"><h6>' + s.title + '</h6>';
+                body += '<div class="content">' + renderMarkdown(reports[s.key]) + '</div></div>';
+            }
+        }
+        
+        document.getElementById('historyModalBody').innerHTML = body;
+        
+        const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+        modal.show();
+    } catch(e) {
+        alert('Failed to load detail: ' + e.message);
+    }
+}
+
+async function clearHistory() {
+    if (!confirm('Clear all analysis history? This cannot be undone.')) return;
+    try {
+        await fetch('/api/history', {method: 'DELETE'});
+        refreshHistory();
+    } catch(e) {
+        alert('Failed to clear: ' + e.message);
+    }
+}
+
+</script>
+</body>
+</html>
