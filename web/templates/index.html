@@ -391,7 +391,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label"><i class="far fa-calendar"></i> Analysis Date</label>
-                            <input type="date" class="form-control" id="dateInput" value="2024-05-10">
+                            <input type="date" class="form-control" id="dateInput">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label"><i class="fas fa-microchip"></i> LLM Provider</label>
@@ -819,6 +819,9 @@ async function startAnalysis() {
         document.getElementById('analyzeBtn').disabled = false;
     }
 }
+
+// Set default date to today
+document.getElementById('dateInput').valueAsDate = new Date();
 
 // Load initial status
 fetch('/api/status').then(r => r.json()).then(s => {
