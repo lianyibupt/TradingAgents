@@ -1012,7 +1012,7 @@ def run_analysis(checkpoint: bool = False):
 
     # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
     selected_set = {analyst.value for analyst in selections["analysts"]}
-    selected_analyst_keys = [a for a in ANALYST_ORDER if a in selected_set]
+    selected_analyst_keys = [key for _, key in ANALYST_ORDER if key in selected_set]
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analyst_keys,
         concurrency_limit=config["analyst_concurrency_limit"],

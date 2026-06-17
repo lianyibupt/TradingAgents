@@ -1,4 +1,8 @@
 import os
+from typing import Optional
+
+from tradingagents.llm_clients.api_key_env import PROVIDER_API_KEY_ENV
+from tradingagents.llm_clients.model_catalog import get_model_options
 
 _TRADINGAGENTS_HOME = os.path.join(os.path.expanduser("~"), ".tradingagents")
 
@@ -42,7 +46,64 @@ def _apply_env_overrides(config: dict) -> dict:
     return config
 
 
-DEFAULT_CONFIG = _apply_env_overrides({
+def _is_usable_secret(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    stripped = value.strip()
+    return bool(stripped) and stripped != "placeholder"
+
+
+def _default_model(provider: str, mode: str) -> str:
+    # Auto-inferred providers should prefer the most broadly available,
+    # stable model IDs instead of the newest frontier defaults. This path
+    # exists to keep a fresh install runnable when the user has only set a
+    # single provider key but not chosen models yet.
+    auto_defaults = {
+        "deepseek": {"quick": "deepseek-chat", "deep": "deepseek-chat"},
+    }
+    chosen = auto_defaults.get(provider, {}).get(mode)
+    if chosen:
+        return chosen
+
+    for _, model in get_model_options(provider, mode):
+        if model != "custom":
+            return model
+    raise ValueError(f"No default {mode} model configured for provider {provider!r}")
+
+
+def _infer_provider_defaults(config: dict) -> dict:
+    """Pick a usable provider/model set when the built-in OpenAI defaults can't run.
+
+    This keeps fresh installs usable when the user has configured exactly one
+    non-OpenAI provider key in ``.env`` but has not yet set
+    ``TRADINGAGENTS_LLM_PROVIDER``. Explicit TRADINGAGENTS_* selections always win.
+    """
+    if os.environ.get("TRADINGAGENTS_LLM_PROVIDER"):
+        return config
+
+    current_provider = str(config.get("llm_provider", "openai")).lower()
+    current_key_env = PROVIDER_API_KEY_ENV.get(current_provider)
+    if current_key_env is None or _is_usable_secret(os.environ.get(current_key_env)):
+        return config
+
+    candidates = [
+        provider
+        for provider, env_var in PROVIDER_API_KEY_ENV.items()
+        if provider != "azure" and env_var and _is_usable_secret(os.environ.get(env_var))
+    ]
+    if len(candidates) != 1:
+        return config
+
+    chosen = candidates[0]
+    config["llm_provider"] = chosen
+    if not os.environ.get("TRADINGAGENTS_QUICK_THINK_LLM"):
+        config["quick_think_llm"] = _default_model(chosen, "quick")
+    if not os.environ.get("TRADINGAGENTS_DEEP_THINK_LLM"):
+        config["deep_think_llm"] = _default_model(chosen, "deep")
+    return config
+
+
+DEFAULT_CONFIG = _infer_provider_defaults(_apply_env_overrides({
     "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
     "results_dir": os.getenv("TRADINGAGENTS_RESULTS_DIR", os.path.join(_TRADINGAGENTS_HOME, "logs")),
     "data_cache_dir": os.getenv("TRADINGAGENTS_CACHE_DIR", os.path.join(_TRADINGAGENTS_HOME, "cache")),
@@ -74,13 +135,14 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # so a crashed run can resume from the last successful step.
     "checkpoint_enabled": False,
     # Output language for analyst reports and final decision
-    # Internal agent debate stays in English for reasoning quality
-    "output_language": "English",
+    # Internal reasoning may still use English-friendly model behavior, but
+    # user-facing reports default to Chinese in the local web experience.
+    "output_language": "Chinese",
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
-    "analyst_concurrency_limit": 4,
+    "analyst_concurrency_limit": 1,
     # News / data fetching parameters
     # Increase for longer lookback strategies or to broaden macro coverage;
     # decrease to reduce token usage in agent prompts.
@@ -127,4 +189,4 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".SZ":  "399001.SZ",   # Shenzhen (SZSE Component)
         "":     "SPY",         # default for US-listed tickers (no suffix)
     },
-})
+}))

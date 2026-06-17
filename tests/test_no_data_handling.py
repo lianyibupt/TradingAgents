@@ -8,6 +8,8 @@ Covers two systematic fixes:
 """
 
 import os
+import importlib
+import sys
 import unittest
 from unittest import mock
 
@@ -82,6 +84,14 @@ class TestRouteToVendorSentinel(unittest.TestCase):
                 "get_stock_data", "FAKE", "2026-01-01", "2026-01-10"
             )
         self.assertIn("NO_DATA_AVAILABLE", result)
+
+
+@pytest.mark.unit
+class TestOptionalVendorImports:
+    def test_interface_imports_without_akshare_installed(self, monkeypatch):
+        monkeypatch.delitem(sys.modules, "akshare", raising=False)
+        module = importlib.reload(interface)
+        assert "get_stock_data" in module.VENDOR_METHODS
 
 
 if __name__ == "__main__":

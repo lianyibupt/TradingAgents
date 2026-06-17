@@ -202,6 +202,26 @@ class OpenAIClient(BaseLLMClient):
         super().__init__(model, base_url, **kwargs)
         self.provider = provider.lower()
 
+    def _apply_api_key(self, llm_kwargs: dict[str, Any]) -> None:
+        """Resolve provider auth locally so missing keys fail before HTTP calls."""
+        if "api_key" in self.kwargs:
+            return
+
+        api_key_env = get_api_key_env(self.provider)
+        if api_key_env:
+            api_key = os.environ.get(api_key_env)
+            if api_key:
+                llm_kwargs["api_key"] = api_key
+                return
+            raise ValueError(
+                f"API key for provider {self.provider} is not set. "
+                f"Please set the {api_key_env} environment variable "
+                f"(e.g. add {api_key_env}=your_key to your .env file)."
+            )
+
+        if self.provider == "ollama":
+            llm_kwargs["api_key"] = "ollama"
+
     def get_llm(self) -> Any:
         """Return configured ChatOpenAI instance."""
         self.warn_if_unknown_model()
@@ -212,21 +232,10 @@ class OpenAIClient(BaseLLMClient):
         # provider default so users can route through their own gateway.
         if self.provider in _PROVIDER_BASE_URL:
             llm_kwargs["base_url"] = self.base_url or _resolve_provider_base_url(self.provider)
-            api_key_env = get_api_key_env(self.provider)
-            if api_key_env:
-                api_key = os.environ.get(api_key_env)
-                if api_key:
-                    llm_kwargs["api_key"] = api_key
-                else:
-                    raise ValueError(
-                        f"API key for provider '{self.provider}' is not set. "
-                        f"Please set the {api_key_env} environment variable "
-                        f"(e.g. add {api_key_env}=your_key to your .env file)."
-                    )
-            else:
-                llm_kwargs["api_key"] = "ollama"
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
+
+        self._apply_api_key(llm_kwargs)
 
         # Forward user-provided kwargs
         for key in _PASSTHROUGH_KWARGS:

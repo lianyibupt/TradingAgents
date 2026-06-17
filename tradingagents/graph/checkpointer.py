@@ -9,9 +9,16 @@ import hashlib
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
-from langgraph.checkpoint.sqlite import SqliteSaver
+_SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
+try:
+    from langgraph.checkpoint.sqlite import SqliteSaver as _SqliteSaver
+except ModuleNotFoundError as exc:
+    _SqliteSaver = None
+    _SQLITE_IMPORT_ERROR = exc
+
+SqliteSaver = Any
 
 from tradingagents.dataflows.utils import safe_ticker_component
 
@@ -30,13 +37,23 @@ def thread_id(ticker: str, date: str) -> str:
     return hashlib.sha256(f"{ticker.upper()}:{date}".encode()).hexdigest()[:16]
 
 
+def _require_sqlite_saver():
+    if _SqliteSaver is None:
+        raise ModuleNotFoundError(
+            "Checkpointing requires the optional package `langgraph-checkpoint-sqlite`. "
+            "Install project dependencies with `uv sync` or `pip install -e .`, "
+            "or keep `checkpoint_enabled` disabled."
+        ) from _SQLITE_IMPORT_ERROR
+    return _SqliteSaver
+
+
 @contextmanager
 def get_checkpointer(data_dir: str | Path, ticker: str) -> Generator[SqliteSaver, None, None]:
     """Context manager yielding a SqliteSaver backed by a per-ticker DB."""
     db = _db_path(data_dir, ticker)
     conn = sqlite3.connect(str(db), check_same_thread=False)
     try:
-        saver = SqliteSaver(conn)
+        saver = _require_sqlite_saver()(conn)
         saver.setup()
         yield saver
     finally:

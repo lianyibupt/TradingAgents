@@ -1,9 +1,11 @@
+from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_global_news,
     get_language_instruction,
     get_news,
+    prepare_tool_agent_messages,
 )
 from tradingagents.dataflows.config import get_config
 
@@ -48,17 +50,22 @@ def create_news_analyst(llm):
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(instrument_context=instrument_context)
 
-        chain = prompt | llm.bind_tools(tools)
-        result = chain.invoke(state["messages"])
+        prepared_messages = prepare_tool_agent_messages(state["messages"])
+        has_tool_results = any(isinstance(message, ToolMessage) for message in prepared_messages)
+
+        if has_tool_results:
+            result = (prompt | llm).invoke(prepared_messages)
+        else:
+            result = (prompt | llm.bind_tools(tools)).invoke(prepared_messages)
 
         report = ""
 
-        if len(result.tool_calls) == 0:
+        if len(getattr(result, "tool_calls", [])) == 0:
             report = result.content
 
-        return {
-            "messages": [result],
-            "news_report": report,
-        }
+        output = {"messages": [result]}
+        if report:
+            output["news_report"] = report
+        return output
 
     return news_analyst_node

@@ -20,11 +20,16 @@ import requests
 
 from .symbol_utils import NoMarketDataError
 import re
-import akshare as ak
 import pandas as pd
 
 
 logger = logging.getLogger(__name__)
+
+
+def _ak_module():
+    import akshare as ak
+
+    return ak
 
 # ---------------------------------------------------------------------------
 # Client helpers
@@ -129,6 +134,7 @@ def _akshare_stock_data(
     # US stocks: 1-5 letter symbols
     if re.match(r'^[A-Z]{1,5}$', sym):
         try:
+            ak = _ak_module()
             df = ak.stock_us_daily(symbol=sym)
         except Exception:
             pass
@@ -136,6 +142,7 @@ def _akshare_stock_data(
     # A-shares: 6-digit codes
     elif re.match(r'^\d{6}$', sym):
         try:
+            ak = _ak_module()
             df = ak.stock_zh_a_hist(
                 symbol=sym, period="daily",
                 start_date=start_date.replace('-', ''),
@@ -148,6 +155,7 @@ def _akshare_stock_data(
     # Try generic index function
     if df.empty:
         try:
+            ak = _ak_module()
             df = ak.stock_zh_index_daily_em(symbol=sym)
         except Exception:
             pass

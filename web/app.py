@@ -232,13 +232,13 @@ def _run_analysis(ticker: str, date_str: str):
             callbacks=[handler],
         )
 
-        handler._log("📊 Running multi-agent analysis pipeline...")
-        handler._log("   Agents: Market → News → Sentiment → Fundamentals → Research → Trader → Risk → Portfolio")
+        handler._log("📊 正在运行多智能体分析流程...")
+        handler._log("   智能体链路：市场 → 新闻 → 情绪 → 基本面 → 研究辩论 → 交易员 → 风险 → 投资组合")
 
         # Run the full pipeline
         state, decision = ta.propagate(ticker, date_str)
 
-        handler._log(f"✅ Analysis complete! Decision: {decision}")
+        handler._log(f"✅ 分析完成！决策：{decision}")
         handler._log(f"📊 {handler.summary()}")
 
         # Build result

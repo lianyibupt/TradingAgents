@@ -349,23 +349,23 @@
                 <ul class="nav nav-tabs mb-0" id="mainTabs" role="tablist" style="border-bottom: none;">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="analyze-tab" data-bs-toggle="tab" data-bs-target="#analyzePage" type="button" role="tab">
-                            <i class="fas fa-chart-line"></i> Analyze
+                            <i class="fas fa-chart-line"></i> 分析
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#historyPage" type="button" role="tab" onclick="refreshHistory()">
-                            <i class="fas fa-history"></i> History
+                            <i class="fas fa-history"></i> 历史
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="portfolio-tab" data-bs-toggle="tab" data-bs-target="#portfolioPage" type="button" role="tab">
-                            <i class="fas fa-briefcase"></i> Portfolio
+                            <i class="fas fa-briefcase"></i> 组合
                         </button>
                     </li>
                 </ul>
                 <span class="ticker-badge" id="statusBadge">
                     <span class="spinner-accent" id="statusSpinner" style="display:none;"></span>
-                    <span id="statusText"><i class="fas fa-circle" style="color: var(--accent); font-size: 0.5rem;"></i> Ready</span>
+                    <span id="statusText"><i class="fas fa-circle" style="color: var(--accent); font-size: 0.5rem;"></i> 就绪</span>
                 </span>
             </div>
         </div>
@@ -375,8 +375,8 @@
         <!-- Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <h2 class="fw-bold mb-1"><i class="fas fa-chart-line" style="color: var(--accent);"></i> Multi-Agent Trading Analysis</h2>
-                <p class="text-secondary">AI-powered stock analysis powered by 9 specialized agents</p>
+                <h2 class="fw-bold mb-1"><i class="fas fa-chart-line" style="color: var(--accent);"></i> 多智能体交易分析</h2>
+                <p class="text-secondary">由 9 个专业智能体协同完成的 AI 股票分析</p>
             </div>
         </div>
 
@@ -386,25 +386,25 @@
                 <div class="card p-4">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
-                            <label class="form-label"><i class="fas fa-search"></i> Ticker</label>
+                            <label class="form-label"><i class="fas fa-search"></i> 代码</label>
                             <input type="text" class="form-control" id="tickerInput" placeholder="e.g. NVDA, AAPL, TSLA" value="NVDA">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label"><i class="far fa-calendar"></i> Analysis Date</label>
+                            <label class="form-label"><i class="far fa-calendar"></i> 分析日期</label>
                             <input type="date" class="form-control" id="dateInput">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label"><i class="fas fa-microchip"></i> LLM Provider</label>
+                            <label class="form-label"><i class="fas fa-microchip"></i> 大模型提供方</label>
                             <select class="form-select" id="providerSelect">
                                 <option value="deepseek" selected>DeepSeek</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="anthropic">Anthropic</option>
-                                <option value="google">Google Gemini</option>
+                                <option value="google">谷歌 Gemini</option>
                             </select>
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-primary w-100" id="analyzeBtn" onclick="startAnalysis()">
-                                <i class="fas fa-play"></i> Analyze
+                                <i class="fas fa-play"></i> 开始分析
                             </button>
                         </div>
                     </div>
@@ -418,11 +418,11 @@
             <div class="col-md-5 mb-4">
                 <div class="card h-100">
                     <div class="card-header">
-                        <i class="fas fa-terminal"></i> Progress Log
+                        <i class="fas fa-terminal"></i> 进度日志
                     </div>
                     <div class="card-body">
                         <div class="log-container" id="logContainer">
-                            <div class="log-entry">Ready to analyze. Enter a ticker and click Analyze.</div>
+                            <div class="log-entry">准备就绪。请输入代码并点击“开始分析”。</div>
                         </div>
                     </div>
                 </div>
@@ -432,12 +432,12 @@
             <div class="col-md-7 mb-4">
                 <div class="card h-100">
                     <div class="card-header">
-                        <i class="fas fa-gavel"></i> Trading Decision
+                        <i class="fas fa-gavel"></i> 交易决策
                     </div>
                     <div class="card-body" id="decisionPanel">
                         <div class="text-center py-5 text-secondary">
                             <i class="fas fa-chart-bar fa-3x mb-3" style="opacity:0.3;"></i>
-                            <p>Run an analysis to see the trading decision</p>
+                            <p>运行一次分析后即可查看交易决策</p>
                         </div>
                     </div>
                 </div>
@@ -675,13 +675,25 @@ function setStatus(text, spinning=false) {
 
 function getDecisionBadge(decision) {
     const d = (decision || '').toLowerCase();
-    if (d.includes('buy') || d.includes('overweight')) return '<span class="badge-buy">' + decision + '</span>';
-    if (d.includes('sell') || d.includes('underweight')) return '<span class="badge-sell">' + decision + '</span>';
-    return '<span class="badge-hold">' + decision + '</span>';
+    const label = translateDecision(decision);
+    if (d.includes('buy') || d.includes('overweight')) return '<span class="badge-buy">' + label + '</span>';
+    if (d.includes('sell') || d.includes('underweight')) return '<span class="badge-sell">' + label + '</span>';
+    return '<span class="badge-hold">' + label + '</span>';
+}
+
+function translateDecision(decision) {
+    const text = decision || '无';
+    const key = text.toLowerCase();
+    if (key.includes('overweight')) return '超配';
+    if (key.includes('underweight')) return '低配';
+    if (key.includes('buy')) return '买入';
+    if (key.includes('sell')) return '卖出';
+    if (key.includes('hold')) return '持有';
+    return text;
 }
 
 function renderMarkdown(text) {
-    if (!text) return '<span class="text-secondary">No data</span>';
+    if (!text) return '<span class="text-secondary">暂无数据</span>';
     let html = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -698,7 +710,7 @@ function showResult(data) {
         <div class="decision-banner">
             <div class="decision-label"><i class="fas fa-chart-line"></i> ${data.ticker} · ${data.date}</div>
             <div class="decision-value">${getDecisionBadge(decision)}</div>
-            <div class="text-secondary" style="font-size:0.85rem;">Portfolio Manager Rating</div>
+            <div class="text-secondary" style="font-size:0.85rem;">投资组合经理评级</div>
         </div>
     `;
 
@@ -731,7 +743,7 @@ async function startAnalysis() {
     const date = document.getElementById('dateInput').value;
     const provider = document.getElementById('providerSelect').value;
 
-    if (!ticker) { alert('Please enter a ticker'); return; }
+    if (!ticker) { alert('请输入代码'); return; }
 
     // Reset UI
     document.getElementById('reportsSection').style.display = 'none';
@@ -739,15 +751,15 @@ async function startAnalysis() {
     document.getElementById('decisionPanel').innerHTML = `
         <div class="text-center py-5">
             <div class="spinner-accent" style="width:40px;height:40px;border-width:3px;margin:0 auto 1rem;"></div>
-            <p class="text-secondary">Analysis in progress...</p>
+            <p class="text-secondary">分析进行中...</p>
         </div>
     `;
 
     document.getElementById('analyzeBtn').disabled = true;
-    setStatus('<i class="fas fa-spinner fa-spin"></i> Analyzing...', true);
+    setStatus('<i class="fas fa-spinner fa-spin"></i> 分析中...', true);
 
-    addLog('🚀 Starting analysis for ' + ticker + ' on ' + date);
-    addLog('⚙️ Provider: ' + provider);
+    addLog('🚀 开始分析 ' + ticker + '，日期 ' + date);
+    addLog('⚙️ 提供方：' + provider);
 
     try {
         const resp = await fetch('/api/analyze', {
@@ -758,11 +770,11 @@ async function startAnalysis() {
         const data = await resp.json();
         if (data.error) {
             addLog('❌ ' + data.error, 'error');
-            setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+            setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> 错误');
             document.getElementById('analyzeBtn').disabled = false;
             return;
         }
-        addLog('✅ Analysis started, polling for results...');
+        addLog('✅ 已启动分析，正在轮询结果...');
 
         // Poll for progress
         pollInterval = setInterval(async () => {
@@ -781,13 +793,13 @@ async function startAnalysis() {
 
                 if (prog.error) {
                     clearInterval(pollInterval);
-                    setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+                    setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> 错误');
                     document.getElementById('analyzeBtn').disabled = false;
                     addLog('❌ ' + prog.error, 'error');
                     document.getElementById('decisionPanel').innerHTML = `
                         <div class="text-center py-5 text-danger">
                             <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                            <p>Analysis failed: ${prog.error}</p>
+                            <p>分析失败：${prog.error}</p>
                         </div>
                     `;
                     return;
@@ -800,11 +812,11 @@ async function startAnalysis() {
                     const result = await resultResp.json();
                     if (result.error) {
                         addLog('❌ ' + result.error, 'error');
-                        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+                        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> 错误');
                     } else {
                         showResult(result);
-                        setStatus('<i class="fas fa-check-circle" style="color:var(--accent);"></i> Complete');
-                        addLog('✅ Analysis complete! Decision: ' + (result.decision || 'N/A'), 'done');
+                        setStatus('<i class="fas fa-check-circle" style="color:var(--accent);"></i> 完成');
+                        addLog('✅ 分析完成！决策：' + translateDecision(result.decision || '无'), 'done');
                     }
                     document.getElementById('analyzeBtn').disabled = false;
                 }
@@ -814,8 +826,8 @@ async function startAnalysis() {
         }, 1000);
 
     } catch(e) {
-        addLog('❌ Network error: ' + e.message, 'error');
-        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> Error');
+        addLog('❌ 网络错误：' + e.message, 'error');
+        setStatus('<i class="fas fa-exclamation-triangle" style="color:var(--sell-color);"></i> 错误');
         document.getElementById('analyzeBtn').disabled = false;
     }
 }
@@ -828,9 +840,9 @@ fetch('/api/status').then(r => r.json()).then(s => {
     const provider = s.llm_provider || 'deepseek';
     document.getElementById('providerSelect').value = provider;
     if (!s.has_deepseek && !s.has_openai) {
-        addLog('⚠️ No API keys detected. Check your .env file.', 'error');
+        addLog('⚠️ 未检测到 API Key，请检查 .env 文件。', 'error');
     } else if (s.has_deepseek) {
-        addLog('🔑 DeepSeek key detected: ' + s.masked_deepseek);
+        addLog('🔑 已检测到 DeepSeek Key：' + s.masked_deepseek);
     }
 });
 
@@ -1089,18 +1101,18 @@ function viewAccountHistory(el) {
 // ---------------------------------------------------------------------------
 async function refreshHistory() {
     const list = document.getElementById('historyList');
-    list.innerHTML = '<div class="text-center py-4"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">Loading history...</p></div>';
+    list.innerHTML = '<div class="text-center py-4"><div class="spinner-accent" style="width:30px;height:30px;margin:0 auto;"></div><p class="text-secondary mt-2">正在加载历史...</p></div>';
     
     try {
         const resp = await fetch('/api/history');
         const data = await resp.json();
         
         if (!data.records || data.records.length === 0) {
-            list.innerHTML = '<div class="history-empty"><i class="fas fa-inbox"></i><p>No analysis history yet.<br>Run an analysis and it will be saved here automatically.</p></div>';
+            list.innerHTML = '<div class="history-empty"><i class="fas fa-inbox"></i><p>暂无分析历史。<br>运行一次分析后会自动保存到这里。</p></div>';
             return;
         }
-        
-        let html = `<p class="text-secondary mb-3">Total: ${data.total} records</p>`;
+
+        let html = `<p class="text-secondary mb-3">共 ${data.total} 条记录</p>`;
         
         for (const r of data.records) {
             const badge = getDecisionBadge(r.decision || 'N/A');
@@ -1122,7 +1134,7 @@ async function refreshHistory() {
         }
         list.innerHTML = html;
     } catch(e) {
-        list.innerHTML = '<div class="history-empty text-danger"><i class="fas fa-exclamation-triangle"></i><p>Failed to load history: ' + e.message + '</p></div>';
+        list.innerHTML = '<div class="history-empty text-danger"><i class="fas fa-exclamation-triangle"></i><p>加载历史失败：' + e.message + '</p></div>';
     }
 }
 
@@ -1141,19 +1153,19 @@ async function viewHistory(id) {
         
         // Decision summary
         body += '<div class="decision-banner mb-4">';
-        body += '<div class="decision-label">Portfolio Decision</div>';
+        body += '<div class="decision-label">组合决策</div>';
         body += '<div class="decision-value">' + getDecisionBadge(data.decision || 'N/A') + '</div>';
         body += '</div>';
         
         // Reports
         const sections = [
-            {title: 'Market Report', key: 'market_report'},
-            {title: 'News Report', key: 'news_report'},
-            {title: 'Sentiment Report', key: 'sentiment_report'},
-            {title: 'Fundamentals Report', key: 'fundamentals_report'},
-            {title: 'Investment Plan', key: 'investment_plan'},
-            {title: 'Trader Plan', key: 'trader_investment_plan'},
-            {title: 'Final Decision', key: 'final_trade_decision'},
+            {title: '市场报告', key: 'market_report'},
+            {title: '新闻报告', key: 'news_report'},
+            {title: '情绪报告', key: 'sentiment_report'},
+            {title: '基本面报告', key: 'fundamentals_report'},
+            {title: '投资方案', key: 'investment_plan'},
+            {title: '交易员方案', key: 'trader_investment_plan'},
+            {title: '最终决策', key: 'final_trade_decision'},
         ];
         
         for (const s of sections) {
@@ -1168,17 +1180,17 @@ async function viewHistory(id) {
         const modal = new bootstrap.Modal(document.getElementById('historyModal'));
         modal.show();
     } catch(e) {
-        alert('Failed to load detail: ' + e.message);
+        alert('加载详情失败：' + e.message);
     }
 }
 
 async function clearHistory() {
-    if (!confirm('Clear all analysis history? This cannot be undone.')) return;
+    if (!confirm('确定清空全部分析历史吗？此操作不可撤销。')) return;
     try {
         await fetch('/api/history', {method: 'DELETE'});
         refreshHistory();
     } catch(e) {
-        alert('Failed to clear: ' + e.message);
+        alert('清空失败：' + e.message);
     }
 }
 

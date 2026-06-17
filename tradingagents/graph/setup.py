@@ -2,7 +2,6 @@
 
 from typing import Any, Dict
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import Send
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import *
@@ -85,14 +84,8 @@ class GraphSetup:
         workflow.add_node("Conservative Analyst", conservative_analyst)
         workflow.add_node("Portfolio Manager", portfolio_manager_node)
 
-        # Define edges — analysts run in parallel via fan-out
-        analyst_names = [spec.agent_node for spec in plan.specs]
-
-        # Fan-out: START sends to all analysts simultaneously
-        def _fan_out_to_analysts(state):
-            return [Send(name, state) for name in analyst_names]
-
-        workflow.add_conditional_edges(START, _fan_out_to_analysts, analyst_names)
+        # Define edges — analysts run sequentially in the selected order.
+        workflow.add_edge(START, plan.specs[0].agent_node)
 
         # Each analyst has its own tool loop
         for spec in plan.specs:
@@ -103,29 +96,9 @@ class GraphSetup:
             )
             workflow.add_edge(spec.tool_node, spec.agent_node)
 
-        # Fan-in: all analysts route to a collector node.
-        # The collector checks if all 4 reports are ready before proceeding.
-        # Branches that finish early terminate; the last branch to finish
-        # (with all reports populated) proceeds to Bull Researcher.
-        def _collect(state):
-            return state
-
-        def _check_all_reports(state):
-            if (state.get("market_report", "").strip()
-                    and state.get("sentiment_report", "").strip()
-                    and state.get("news_report", "").strip()
-                    and state.get("fundamentals_report", "").strip()):
-                return "Bull Researcher"
-            return END
-
-        workflow.add_node("collect_analysts", _collect)
-        workflow.add_conditional_edges("collect_analysts", _check_all_reports, {
-            "Bull Researcher": "Bull Researcher",
-            END: END,
-        })
-
-        for spec in plan.specs:
-            workflow.add_edge(spec.clear_node, "collect_analysts")
+        for current_spec, next_spec in zip(plan.specs, plan.specs[1:]):
+            workflow.add_edge(current_spec.clear_node, next_spec.agent_node)
+        workflow.add_edge(plan.specs[-1].clear_node, "Bull Researcher")
 
         # Add remaining edges
         workflow.add_conditional_edges(

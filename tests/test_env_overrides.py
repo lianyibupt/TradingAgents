@@ -7,12 +7,16 @@ import importlib
 import pytest
 
 import tradingagents.default_config as default_config_module
+from tradingagents.llm_clients.api_key_env import PROVIDER_API_KEY_ENV
 
 
 def _reload_with_env(monkeypatch, **overrides):
     """Set/clear env vars then reload default_config to re-evaluate DEFAULT_CONFIG."""
     for key in list(default_config_module._ENV_OVERRIDES):
         monkeypatch.delenv(key, raising=False)
+    for env_var in PROVIDER_API_KEY_ENV.values():
+        if env_var:
+            monkeypatch.delenv(env_var, raising=False)
     for key, val in overrides.items():
         monkeypatch.setenv(key, val)
     return importlib.reload(default_config_module)
@@ -96,3 +100,23 @@ def test_unknown_env_var_is_ignored(monkeypatch):
         TRADINGAGENTS_NONEXISTENT_KEY="oops",
     )
     assert "nonexistent_key" not in dc.DEFAULT_CONFIG
+
+
+def test_single_non_default_provider_key_auto_selects_provider(monkeypatch):
+    dc = _reload_with_env(monkeypatch, DEEPSEEK_API_KEY="sk-deepseek-real")
+    assert dc.DEFAULT_CONFIG["llm_provider"] == "deepseek"
+    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "deepseek-chat"
+    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "deepseek-chat"
+
+
+def test_explicit_provider_override_wins_over_key_inference(monkeypatch):
+    dc = _reload_with_env(
+        monkeypatch,
+        DEEPSEEK_API_KEY="sk-deepseek-real",
+        TRADINGAGENTS_LLM_PROVIDER="openai",
+        TRADINGAGENTS_DEEP_THINK_LLM="gpt-5.5",
+        TRADINGAGENTS_QUICK_THINK_LLM="gpt-5.4-mini",
+    )
+    assert dc.DEFAULT_CONFIG["llm_provider"] == "openai"
+    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "gpt-5.5"
+    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "gpt-5.4-mini"

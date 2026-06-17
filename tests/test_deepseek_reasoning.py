@@ -14,7 +14,7 @@ Two pieces verified:
 import os
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.prompt_values import ChatPromptValue
 from pydantic import BaseModel
 
@@ -23,6 +23,8 @@ from tradingagents.llm_clients.openai_client import (
     NormalizedChatOpenAI,
     _input_to_messages,
 )
+from tradingagents.agents.utils.agent_utils import sanitize_tool_messages
+from tradingagents.agents.utils.agent_utils import prepare_tool_agent_messages
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +103,68 @@ class TestDeepSeekReasoningContent:
         assistant_dicts = [m for m in payload["messages"] if m.get("role") == "assistant"]
         assert assistant_dicts, "assistant message missing from outgoing payload"
         assert assistant_dicts[0]["reasoning_content"] == "weighed bull case"
+
+
+@pytest.mark.unit
+class TestToolMessageSanitization:
+    def test_orphan_tool_message_is_dropped(self):
+        messages = [
+            HumanMessage(content="start"),
+            ToolMessage(content="orphan", tool_call_id="call-orphan"),
+            AIMessage(content="call tools", tool_calls=[{"id": "call-1", "name": "x", "args": {}}]),
+            ToolMessage(content="ok", tool_call_id="call-1"),
+            AIMessage(content="done"),
+        ]
+
+        sanitized = sanitize_tool_messages(messages)
+
+        assert [type(m).__name__ for m in sanitized] == [
+            "HumanMessage",
+            "AIMessage",
+            "ToolMessage",
+            "AIMessage",
+        ]
+        assert sanitized[1].tool_calls[0]["id"] == "call-1"
+        assert sanitized[2].tool_call_id == "call-1"
+
+    def test_incomplete_tool_call_block_is_dropped(self):
+        messages = [
+            HumanMessage(content="start"),
+            AIMessage(content="call tools", tool_calls=[
+                {"id": "call-1", "name": "x", "args": {}},
+                {"id": "call-2", "name": "y", "args": {}},
+            ]),
+            ToolMessage(content="only one result", tool_call_id="call-1"),
+            AIMessage(content="done"),
+        ]
+
+        sanitized = sanitize_tool_messages(messages)
+
+        assert [type(m).__name__ for m in sanitized] == [
+            "HumanMessage",
+            "AIMessage",
+        ]
+        assert sanitized[-1].content == "done"
+
+    def test_prepare_tool_agent_messages_keeps_latest_complete_round(self):
+        messages = [
+            HumanMessage(content="first"),
+            AIMessage(content="older done"),
+            HumanMessage(content="latest prompt"),
+            AIMessage(content="call tools", tool_calls=[{"id": "call-1", "name": "x", "args": {}}]),
+            ToolMessage(content="tool result", tool_call_id="call-1"),
+            AIMessage(content="final"),
+        ]
+
+        prepared = prepare_tool_agent_messages(messages)
+
+        assert [type(m).__name__ for m in prepared] == [
+            "HumanMessage",
+            "AIMessage",
+            "ToolMessage",
+        ]
+        assert prepared[0].content == "latest prompt"
+        assert prepared[1].tool_calls[0]["id"] == "call-1"
 
     def test_propagate_through_chat_prompt_value(self):
         """Gemini bot review note: non-list inputs (ChatPromptValue) must

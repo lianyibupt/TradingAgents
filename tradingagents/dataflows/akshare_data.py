@@ -11,12 +11,17 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-import akshare as ak
 import pandas as pd
 
 from .symbol_utils import NoMarketDataError
 
 logger = logging.getLogger(__name__)
+
+
+def _ak_module():
+    import akshare as ak
+
+    return ak
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -60,6 +65,7 @@ def get_stock_data(
     # US stocks: 1-5 letter symbols
     if re.match(r"^[A-Z]{1,5}$", sym):
         try:
+            ak = _ak_module()
             df = ak.stock_us_daily(symbol=sym)
             logger.info("akshare: fetched US stock data for %s", sym)
         except Exception as e:
@@ -68,6 +74,7 @@ def get_stock_data(
     # A-shares: 6-digit codes
     elif re.match(r"^\d{6}$", sym):
         try:
+            ak = _ak_module()
             df = ak.stock_zh_a_hist(
                 symbol=sym,
                 period="daily",
@@ -82,6 +89,7 @@ def get_stock_data(
     # Try generic index function for anything else
     if df.empty:
         try:
+            ak = _ak_module()
             df = ak.stock_zh_index_daily_em(symbol=sym)
             logger.info("akshare: fetched index data for %s", sym)
         except Exception as e:

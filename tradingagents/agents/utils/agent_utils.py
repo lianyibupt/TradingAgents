@@ -1,9 +1,10 @@
 import functools
 import logging
+import os
 from typing import Any, Mapping, Optional
 
 import yfinance as yf
-from langchain_core.messages import HumanMessage, RemoveMessage
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, ToolMessage
 
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import (
@@ -188,6 +189,146 @@ def create_msg_delete():
         return {"messages": removal_operations + [placeholder]}
 
     return delete_messages
+
+
+def sanitize_tool_messages(messages: list[Any]) -> list[Any]:
+    """Drop orphan tool messages that some providers reject with HTTP 400.
+
+    OpenAI-compatible providers such as DeepSeek require every ``tool`` role
+    message to immediately follow an assistant message containing
+    ``tool_calls``. If a reducer or branch merge leaves behind a tool message
+    without that preceding assistant call, the whole request fails before the
+    model sees the prompt. Keep valid assistant→tool blocks intact and drop
+    only the orphan tool messages.
+    """
+    sanitized: list[Any] = []
+    index = 0
+
+    while index < len(messages):
+        message = messages[index]
+
+        if isinstance(message, ToolMessage):
+            logger.debug("Dropping orphan tool message without preceding tool_calls")
+            index += 1
+            continue
+
+        if isinstance(message, AIMessage) and bool(getattr(message, "tool_calls", None)):
+            expected_ids = {
+                tool_call.get("id")
+                for tool_call in message.tool_calls
+                if isinstance(tool_call, dict) and tool_call.get("id")
+            }
+            tool_messages: list[Any] = []
+            seen_ids: set[str] = set()
+            cursor = index + 1
+            while cursor < len(messages) and isinstance(messages[cursor], ToolMessage):
+                tool_message = messages[cursor]
+                tool_call_id = getattr(tool_message, "tool_call_id", None)
+                if tool_call_id and tool_call_id in seen_ids:
+                    cursor += 1
+                    continue
+                tool_messages.append(tool_message)
+                if tool_call_id:
+                    seen_ids.add(tool_call_id)
+                cursor += 1
+
+            if not expected_ids or expected_ids.issubset(seen_ids):
+                sanitized.append(message)
+                sanitized.extend(tool_messages)
+            else:
+                logger.debug(
+                    "Dropping incomplete tool-call block: expected %s, saw %s",
+                    sorted(expected_ids),
+                    sorted(seen_ids),
+                )
+            index = cursor
+            continue
+
+        sanitized.append(message)
+        index += 1
+
+    return sanitized
+
+
+def prepare_tool_agent_messages(messages: list[Any]) -> list[Any]:
+    """Reduce history to the latest coherent tool round for tool-enabled agents.
+
+    Tool-capable OpenAI-compatible providers are sensitive to stale or merged
+    message history. Keep either the latest valid human→assistant(tool_calls)
+    →tool-results slice, or just the latest human message when no valid tool
+    round exists yet.
+    """
+    sanitized = sanitize_tool_messages(messages)
+
+    for index in range(len(sanitized) - 1, -1, -1):
+        message = sanitized[index]
+        if not isinstance(message, AIMessage) or not getattr(message, "tool_calls", None):
+            continue
+
+        tool_messages: list[Any] = []
+        cursor = index + 1
+        while cursor < len(sanitized) and isinstance(sanitized[cursor], ToolMessage):
+            tool_messages.append(sanitized[cursor])
+            cursor += 1
+
+        if not tool_messages:
+            continue
+
+        human_context = None
+        for prior in range(index - 1, -1, -1):
+            if isinstance(sanitized[prior], HumanMessage):
+                human_context = sanitized[prior]
+                break
+
+        prepared = [message]
+        if human_context is not None:
+            prepared.insert(0, human_context)
+        prepared.extend(tool_messages)
+        if os.environ.get("TRADINGAGENTS_DEBUG_TOOL_MESSAGES"):
+            print(
+                "TOOL_MESSAGES_PREPARED",
+                [
+                    (
+                        type(msg).__name__,
+                        bool(getattr(msg, "tool_calls", None)),
+                        getattr(msg, "tool_call_id", None),
+                    )
+                    for msg in prepared
+                ],
+            )
+        return prepared
+
+    for message in reversed(sanitized):
+        if isinstance(message, HumanMessage):
+            prepared = [message]
+            if os.environ.get("TRADINGAGENTS_DEBUG_TOOL_MESSAGES"):
+                print(
+                    "TOOL_MESSAGES_PREPARED",
+                    [
+                        (
+                            type(msg).__name__,
+                            bool(getattr(msg, "tool_calls", None)),
+                            getattr(msg, "tool_call_id", None),
+                        )
+                        for msg in prepared
+                    ],
+                )
+            return prepared
+
+    prepared = sanitized[-1:] if sanitized else []
+    if os.environ.get("TRADINGAGENTS_DEBUG_TOOL_MESSAGES"):
+        print(
+            "TOOL_MESSAGES_PREPARED",
+            [
+                (
+                    type(msg).__name__,
+                    bool(getattr(msg, "tool_calls", None)),
+                    getattr(msg, "tool_call_id", None),
+                )
+                for msg in prepared
+            ],
+        )
+    return prepared
 
 
         

@@ -1,13 +1,22 @@
 """Test checkpoint resume: crash mid-analysis, re-run resumes from last node."""
 
+from __future__ import annotations
+
 import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 from typing import TypedDict
 
-from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.graph import END, StateGraph
+try:
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    from langgraph.graph import END, StateGraph
+    _CHECKPOINT_DEPS_AVAILABLE = True
+except ModuleNotFoundError:
+    SqliteSaver = object
+    StateGraph = object
+    END = "__end__"
+    _CHECKPOINT_DEPS_AVAILABLE = False
 
 from tradingagents.graph.checkpointer import (
     checkpoint_step,
@@ -45,6 +54,10 @@ def _build_graph() -> StateGraph:
     return builder
 
 
+@unittest.skipUnless(
+    _CHECKPOINT_DEPS_AVAILABLE,
+    "requires langgraph sqlite checkpoint package",
+)
 class TestCheckpointResume(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()

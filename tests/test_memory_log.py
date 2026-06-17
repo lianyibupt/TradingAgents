@@ -684,6 +684,13 @@ class TestPortfolioManagerInjection:
         state = propagator.create_initial_state("NVDA", "2026-01-10")
         assert state["past_context"] == ""
 
+    def test_initial_state_seeds_trader_and_final_decision_fields(self):
+        propagator = Propagator()
+        state = propagator.create_initial_state("NVDA", "2026-01-10")
+        assert state["investment_plan"] == ""
+        assert state["trader_investment_plan"] == ""
+        assert state["final_trade_decision"] == ""
+
     # PM prompt
 
     def test_pm_prompt_includes_past_context(self):

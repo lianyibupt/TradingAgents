@@ -1,4 +1,34 @@
+import os
 import warnings
+from pathlib import Path
+
+
+def _find_env_file(filename: str) -> str:
+    """Walk upward from CWD to find ``filename``.
+
+    Mirrors the practical behavior we rely on from python-dotenv's
+    ``find_dotenv(usecwd=True)`` without requiring that optional package.
+    """
+    for base in (Path.cwd(), *Path.cwd().parents):
+        candidate = base / filename
+        if candidate.is_file():
+            return str(candidate)
+    return ""
+
+
+def _load_dotenv_fallback(path: str) -> None:
+    """Minimal .env loader used only when python-dotenv is unavailable."""
+    if not path:
+        return
+    for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip().strip('"').strip("'")
 
 # Load .env files at package import so DEFAULT_CONFIG's env-var overlay
 # (and every llm_clients consumer) sees the user's keys regardless of
@@ -13,7 +43,8 @@ try:
     load_dotenv(find_dotenv(usecwd=True))
     load_dotenv(find_dotenv(".env.enterprise", usecwd=True), override=False)
 except ImportError:
-    pass
+    _load_dotenv_fallback(_find_env_file(".env"))
+    _load_dotenv_fallback(_find_env_file(".env.enterprise"))
 
 # langchain-core 1.3.3 calls surface_langchain_deprecation_warnings() in
 # its own __init__, which prepends default-action filters for its

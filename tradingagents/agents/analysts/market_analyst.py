@@ -1,8 +1,10 @@
+from langchain_core.messages import ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_indicators,
     get_language_instruction,
+    prepare_tool_agent_messages,
     get_stock_data,
     get_verified_market_snapshot,
 )
@@ -65,18 +67,22 @@ Write a very detailed and nuanced report of the trends you observe. Provide spec
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(instrument_context=instrument_context)
 
-        chain = prompt | llm.bind_tools(tools)
+        prepared_messages = prepare_tool_agent_messages(state["messages"])
+        has_tool_results = any(isinstance(message, ToolMessage) for message in prepared_messages)
 
-        result = chain.invoke(state["messages"])
+        if has_tool_results:
+            result = (prompt | llm).invoke(prepared_messages)
+        else:
+            result = (prompt | llm.bind_tools(tools)).invoke(prepared_messages)
 
         report = ""
 
-        if len(result.tool_calls) == 0:
+        if len(getattr(result, "tool_calls", [])) == 0:
             report = result.content
 
-        return {
-            "messages": [result],
-            "market_report": report,
-        }
+        output = {"messages": [result]}
+        if report:
+            output["market_report"] = report
+        return output
 
     return market_analyst_node
